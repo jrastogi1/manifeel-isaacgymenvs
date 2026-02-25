@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<robot name="power_plug">
+    <link name="power_plug">
+        <visual>
+            <geometry>
+                <mesh filename="../mesh/TVB_mesh/manifeel_power_plug.obj"/>
+            </geometry>
+            <material name="Blue">
+                <color rgba="0.3 0.3 1 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../mesh/TVB_mesh/manifeel_power_plug.obj"/>
+            </geometry>
+            <sdf resolution="128"/>
+        </collision>
+    </link>
+</robot>

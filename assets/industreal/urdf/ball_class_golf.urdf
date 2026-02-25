@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<robot name="golf_ball">
+    <link name="golf_ball">
+        <visual>
+            <geometry>
+                <mesh filename="../mesh/TVB_mesh/ball_task_golf.obj"/>                                   
+            </geometry>
+            <material name="white">
+                <color rgba="1 1 1 1"/>
+            </material>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../mesh/TVB_mesh/ball_task_golf.obj"/> 
+            </geometry>
+            <sdf resolution="256"/>
+        </collision>
+    </link>
+</robot>
