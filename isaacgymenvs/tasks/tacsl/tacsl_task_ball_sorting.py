@@ -68,12 +68,12 @@ class TacSLTaskBallSorting(TacSLTaskImageAugmentation, TacSLEnvBall, FactoryABCT
         # print(f"⎙🙾 task_type: {self.cfg_task.env.task_type}")
         # 🔦 randomize light parameters
 
-        # l_color = gymapi.Vec3(1.0, 0.6, 0.2)
-        # # l_color = gymapi.Vec3(0.7, 0.7, 0.7)        
-        # l_ambient = gymapi.Vec3(0.0, 0.0, 0.0)       # medium env light
-        # # l_direction = gymapi.Vec3(0.0, -1.0, -0.5)   # light direction
-        # l_direction = gymapi.Vec3(0.5, 0.5, 0.0)   
-        # self.gym.set_light_parameters(self.sim, 0, l_color, l_ambient, l_direction)
+        l_color = gymapi.Vec3(1.0, 0.6, 0.2)
+        # l_color = gymapi.Vec3(0.7, 0.7, 0.7)        
+        l_ambient = gymapi.Vec3(0.0, 0.0, 0.0)       # medium env light
+        # l_direction = gymapi.Vec3(0.0, -1.0, -0.5)   # light direction
+        l_direction = gymapi.Vec3(0.5, 0.5, 0.0)   
+        self.gym.set_light_parameters(self.sim, 0, l_color, l_ambient, l_direction)
 
         # self.reset_idx(torch.arange(self.num_envs))
 
