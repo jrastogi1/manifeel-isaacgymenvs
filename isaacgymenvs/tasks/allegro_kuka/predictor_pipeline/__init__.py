@@ -1,0 +1,1 @@
+"""Predictor pipeline package: latent dynamics model, data collection, training, CEM planning."""

@@ -52,6 +52,7 @@ from .allegro_kuka.allegro_kuka_regrasping import AllegroKukaRegrasping
 from .allegro_kuka.allegro_kuka_throw import AllegroKukaThrow
 from .allegro_kuka.allegro_kuka_two_arms_regrasping import AllegroKukaTwoArmsRegrasping
 from .allegro_kuka.allegro_kuka_two_arms_reorientation import AllegroKukaTwoArmsReorientation
+from .allegro_kuka.allegro_kuka_xela import AllegroKukaXela
 
 from .industreal.industreal_task_pegs_insert import IndustRealTaskPegsInsert
 from .industreal.industreal_task_gears_insert import IndustRealTaskGearsInsert
@@ -86,11 +87,18 @@ def resolve_allegro_kuka_two_arms(cfg, *args, **kwargs):
     return subtask_map[subtask_name](cfg, *args, **kwargs)
 
 
+def resolve_allegro_kuka_xela(cfg, *args, **kwargs):
+    # The XELA task currently exposes the reorientation subtask (Allegro hand +
+    # XELA uSkin patches on a KUKA arm, in-hand object reorientation).
+    return AllegroKukaXela(cfg, *args, **kwargs)
+
+
 # Mappings from strings to environments
 isaacgym_task_map = {
     "AllegroHand": AllegroHand,
     "AllegroKuka": resolve_allegro_kuka,
     "AllegroKukaTwoArms": resolve_allegro_kuka_two_arms,
+    "AllegroKukaXela": resolve_allegro_kuka_xela,
     "AllegroHandManualDR": AllegroHandDextremeManualDR,
     "AllegroHandADR": AllegroHandDextremeADR,
     "Ant": Ant,
