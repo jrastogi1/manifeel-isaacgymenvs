@@ -7,6 +7,9 @@ Pipeline per environment:
   4. Auto-reset when object drops (z < 0.1) or max episode length hit.
 
 Saves (z_t, a_t, z_{t+1}, done) shards where z = [tactile_latent(192), state(117)].
+
+To run: 
+    python3 manifeel-isaacgymenvs/isaacgymenvs/tasks/allegro_kuka/predictor_pipeline/collect_data.py --num_envs 512 --total_steps 10000 --device cuda:0
 """
 
 import os
@@ -236,7 +239,7 @@ class HybridDataCollector:
                 dir_to_obj = dir_to_obj / (
                     torch.norm(dir_to_obj, dim=-1, keepdim=True) + 1e-8
                 )
-                actions[reach_mask, :3] = dir_to_obj * 0.5
+                actions[reach_mask, :3] = dir_to_obj[reach_mask] * 0.5
             actions[reach_mask, 7:] = 0.0
             dist = torch.norm(obj_pos - palm_pos, dim=-1) if obj_pos is not None else torch.zeros_like(dist)
             close_mask = reach_mask & (dist < 0.15)
@@ -272,33 +275,40 @@ class HybridDataCollector:
         self.step_count = torch.zeros(self.num_envs, dtype=torch.long, device=self.device)
 
         for global_step in range(total_steps):
-            # Compute current latent z_t (uses window ending at current frame)
-            z_t = self._compute_z(state, taxels)  # [num_envs, 192+117]
+            # --- Compute z_t (current latent) ---
+            z_t = self._compute_z(state, taxels)           # GPU [num_envs, 309]
+            z_t_cpu = z_t.cpu().numpy()                    # move to CPU for storage
+            del z_t                                        # free GPU before next compute
 
-            # Generate actions
-            actions = self._generate_actions(state, taxels)
+            # --- Generate actions (keep as GPU tensor for env.step) ---
+            actions = self._generate_actions(state, taxels)  # GPU tensor [num_envs, action_dim]
 
-            # Step environment
+            # --- Step environment (requires torch.Tensor) ---
             next_obs_dict, reward, done, info = self.env.step(actions)
-            next_obs = (
-                next_obs_dict["obs"] if isinstance(next_obs_dict, dict) else next_obs_dict
-            )
+            next_obs = next_obs_dict["obs"] if isinstance(next_obs_dict, dict) else next_obs_dict
             next_state, next_taxels = self._extract_obs_parts(next_obs)
 
-            # Update taxel window and compute next latent z_{t+1}
-            self._update_taxel_window(next_taxels)
-            z_tp1 = self._compute_z(next_state, next_taxels)
+            actions_cpu = actions.cpu().numpy()            # move to CPU for storage
+            del actions
 
-            # Store transition
+            # --- Compute z_tp1 (next latent) ---
+            self._update_taxel_window(next_taxels)
+            z_tp1 = self._compute_z(next_state, next_taxels)  # GPU tensor
+            z_tp1_cpu = z_tp1.cpu().numpy()                   # CPU for storage
+            del z_tp1
+
+            done_cpu = done.cpu().numpy().astype(np.float32)
+
+            # --- Store transition (all CPU numpy) ---
             self.buffer.append({
-                "z_t": z_t.cpu().numpy(),
-                "a_t": actions.cpu().numpy(),
-                "z_tp1": z_tp1.cpu().numpy(),
-                "done": done.cpu().numpy().astype(np.float32),
+                "z_t": z_t_cpu,
+                "a_t": actions_cpu,
+                "z_tp1": z_tp1_cpu,
+                "done": done_cpu,
             })
             self.total_transitions += self.num_envs
 
-            # Advance state
+            # Advance state (keep on GPU)
             state = next_state
             taxels = next_taxels
 
@@ -307,7 +317,6 @@ class HybridDataCollector:
                 reset_ids = done.nonzero(as_tuple=False).squeeze(-1)
                 self.phase[reset_ids] = 0
                 self.step_count[reset_ids] = 0
-                # Re-init taxel window for reset envs
                 self.taxel_window[reset_ids] = next_taxels[reset_ids].unsqueeze(1).repeat(
                     1, self.window_frames, 1, 1
                 )
@@ -317,6 +326,12 @@ class HybridDataCollector:
                 self._save_shard()
                 self.shard_idx += 1
                 self.buffer = []
+                print(f"[collect] Step {global_step + 1}/{total_steps}, "
+                      f"saved shard {self.shard_idx}, total transitions: {self.total_transitions}")
+
+            if (global_step + 1) % 100 == 0:
+                print(f"[collect] Step {global_step + 1}/{total_steps} "
+                      f"(transitions: {self.total_transitions})")
 
         if self.buffer:
             self._save_shard()
@@ -343,7 +358,7 @@ if __name__ == "__main__":
     parser.add_argument("--total_steps", type=int, default=1_000_000)
     parser.add_argument("--save_dir", type=str, default="./predictor_data")
     parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--save_every", type=int, default=50000)
+    parser.add_argument("--save_every", type=int, default=1024)
     args = parser.parse_args()
     collector = HybridDataCollector(
         num_envs=args.num_envs,
